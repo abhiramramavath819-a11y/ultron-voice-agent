@@ -34,7 +34,7 @@ export function modelFor(provider: Provider): string {
   if (provider === "gemini") return process.env.GEMINI_MODEL || "gemini-3.5-flash";
   if (provider === "openai") return process.env.OPENAI_MODEL || "gpt-5.6-terra";
   if (provider === "anthropic") return process.env.CLAUDE_MODEL || "claude-opus-5";
-  return process.env.GROQ_MODEL || "mixtral-8x7b-32768";
+  return process.env.GROQ_MODEL || "llama-3.1-70b-versatile";
 }
 
 export function missingKeyMessage(provider: Provider): string {
