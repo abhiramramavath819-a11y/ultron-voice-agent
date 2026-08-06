@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
+import { Navigate } from 'react-router-dom';
 import { supabase } from '@/services/supabase';
 import { Package } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const Login: React.FC = () => {
+  const { user } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -23,6 +26,10 @@ export const Login: React.FC = () => {
     }
     setLoading(false);
   };
+
+  if (user) {
+    return <Navigate to="/" replace />;
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">

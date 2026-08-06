@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageSquare, X, Send, Bot, User as UserIcon, Loader2 } from 'lucide-react';
+import { MessageSquare, X, Send, Bot, User as UserIcon } from 'lucide-react';
 import { supabase } from '@/services/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import ReactMarkdown from 'react-markdown';
@@ -50,9 +50,11 @@ export const AIChatbot: React.FC = () => {
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className={`fixed bottom-6 right-6 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center transition-transform hover:scale-105 ${isOpen ? 'scale-0 opacity-0' : 'scale-100 opacity-100'}`}
+        className={`fixed bottom-6 right-6 h-14 pl-4 pr-5 rounded-full bg-primary text-primary-foreground shadow-[0_0_20px_rgba(var(--primary),0.5)] flex items-center justify-center space-x-2 transition-transform hover:scale-105 animate-bounce ${isOpen ? 'scale-0 opacity-0' : 'scale-100 opacity-100'}`}
+        style={{ animationDuration: '2s' }}
       >
         <MessageSquare className="h-6 w-6" />
+        <span className="font-semibold text-sm">Ask AI</span>
       </button>
 
       {isOpen && (

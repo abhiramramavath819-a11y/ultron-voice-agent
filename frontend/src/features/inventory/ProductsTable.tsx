@@ -1,5 +1,5 @@
 import React from 'react';
-import { Edit, MoreHorizontal, Trash } from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
 
 interface ProductsTableProps {
   data: any[];

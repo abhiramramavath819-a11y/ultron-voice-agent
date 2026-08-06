@@ -6,7 +6,7 @@ import { Header } from './Header';
 import { AIChatbot } from '@/features/ai/AIChatbot';
 
 export const AppLayout: React.FC = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, userRole } = useAuth();
 
   if (loading) {
     return (
@@ -28,11 +28,11 @@ export const AppLayout: React.FC = () => {
       <Sidebar />
       <div className="flex flex-col flex-1 overflow-hidden">
         <Header />
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto bg-muted/20">
           <Outlet />
         </main>
       </div>
-      <AIChatbot />
+      {userRole === 'manager' && <AIChatbot />}
     </div>
   );
 };
