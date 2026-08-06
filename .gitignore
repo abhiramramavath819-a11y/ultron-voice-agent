@@ -1,5 +1,12 @@
-node_modules/
-dist/
-build/
+node_modules
+.next
 .env
 .env.local
+.vercel
+*.tsbuildinfo
+next-env.d.ts
+__pycache__/
+*.pyc
+venv/
+backend/venv/
+.DS_Store
