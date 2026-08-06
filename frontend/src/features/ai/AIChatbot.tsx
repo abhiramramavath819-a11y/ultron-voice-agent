@@ -1,7 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageSquare, X, Send, Bot, User as UserIcon, Mic, MicOff, Volume2 } from 'lucide-react';
-import { supabase } from '@/services/supabase';
-import { useAuth } from '@/contexts/AuthContext';
 import ReactMarkdown from 'react-markdown';
 
 interface Message {
@@ -12,7 +10,7 @@ interface Message {
 export const AIChatbot: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', content: 'Hello! I am your AI Assistant. How can I help you today?' }
+    { role: 'assistant', content: 'Hello! I am ULTRON, your AI Voice Assistant. How can I help you today?' }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -21,7 +19,6 @@ export const AIChatbot: React.FC = () => {
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
-  const { session } = useAuth();
 
   // Initialize Web Speech API
   useEffect(() => {
@@ -89,7 +86,7 @@ export const AIChatbot: React.FC = () => {
   };
 
   const handleSend = async () => {
-    if (!input.trim() || !session) return;
+    if (!input.trim()) return;
     
     const userMessage = input;
     setInput('');
@@ -97,19 +94,29 @@ export const AIChatbot: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('chat', {
-        body: { query: userMessage }
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          query: userMessage,
+          userId: 'user-' + Date.now()
+        })
       });
 
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
       
+      const data = await response.json();
       const reply = data.reply || 'No response received';
       setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
       
       // Auto-speak response
       speak(reply);
     } catch (error: any) {
-      console.error(error);
+      console.error('Error:', error);
       const errorMessage = 'Sorry, I encountered an error. Please try again.';
       setMessages(prev => [...prev, { role: 'assistant', content: errorMessage }]);
       speak(errorMessage);
@@ -147,8 +154,8 @@ export const AIChatbot: React.FC = () => {
                 <Bot className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="font-semibold text-sm">AI Assistant</h3>
-                <p className="text-xs text-muted-foreground">Chat & Voice Support</p>
+                <h3 className="font-semibold text-sm">ULTRON</h3>
+                <p className="text-xs text-muted-foreground">Voice & Text AI</p>
               </div>
             </div>
             <button onClick={() => setIsOpen(false)} className="text-muted-foreground hover:text-foreground">
