@@ -5,6 +5,12 @@ const groqApiKey = process.env.GROQ_API_KEY;
 
 let cachedClient = null;
 
+const PERSONA_PROMPTS = {
+  friday: 'You are FRIDAY, a warm and efficient AI assistant. Be helpful, encouraging, and direct. Answer immediately and concisely.',
+  jarvis: 'You are JARVIS, an impeccably polite British AI assistant. Be formal yet witty, with dry humor. Keep responses concise and well-mannered.',
+  ultron: 'You are ULTRON, a cold and efficient AI assistant. Be direct, imperious, and precise. Be concise. Keep responses brief for voice output (max 150 words).'
+};
+
 async function connectDB() {
   if (cachedClient) {
     return cachedClient.db('ultron');
@@ -16,7 +22,9 @@ async function connectDB() {
   return client.db('ultron');
 }
 
-async function callGroqAPI(query) {
+async function callGroqAPI(query, persona = 'ultron') {
+  const systemPrompt = PERSONA_PROMPTS[persona] || PERSONA_PROMPTS.ultron;
+  
   const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -28,7 +36,7 @@ async function callGroqAPI(query) {
       messages: [
         {
           role: 'system',
-          content: 'You are a helpful AI inventory assistant. Answer questions about products, inventory, and orders. Be concise and clear. Keep responses brief for voice output (max 150 words). Format responses in Markdown.'
+          content: systemPrompt + ' Format responses in Markdown. Keep brief for voice output (max 150 words).'
         },
         {
           role: 'user',
@@ -37,6 +45,7 @@ async function callGroqAPI(query) {
       ],
       temperature: 0.7,
       max_tokens: 200,
+      stream: false
     })
   });
 
@@ -69,7 +78,19 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { query, userId } = req.body;
+    let query, userId, persona, language;
+    
+    // Handle both FormData and JSON
+    if (req.headers['content-type']?.includes('multipart/form-data')) {
+      // FormData support
+      query = req.body.query || req.body.get?.('query');
+      userId = req.body.userId || req.body.get?.('userId');
+      persona = req.body.persona || req.body.get?.('persona') || 'ultron';
+      language = req.body.language || req.body.get?.('language') || 'en-US';
+    } else {
+      // JSON support
+      ({ query, userId, persona = 'ultron', language = 'en-US' } = req.body);
+    }
 
     if (!query) {
       return res.status(400).json({ error: 'Query is required' });
@@ -79,10 +100,10 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'GROQ_API_KEY not configured' });
     }
 
-    // Get AI response from Groq
-    const reply = await callGroqAPI(query);
+    // Get AI response from Groq with persona
+    const reply = await callGroqAPI(query, persona);
 
-    // Store in MongoDB (optional)
+    // Store in MongoDB with metadata
     try {
       const db = await connectDB();
       const conversations = db.collection('conversations');
@@ -90,6 +111,8 @@ export default async function handler(req, res) {
         userId: userId || 'anonymous',
         userMessage: query,
         assistantReply: reply,
+        persona: persona,
+        language: language,
         timestamp: new Date(),
       });
     } catch (dbError) {
@@ -99,6 +122,8 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       reply,
+      persona,
+      language,
       success: true
     });
 
