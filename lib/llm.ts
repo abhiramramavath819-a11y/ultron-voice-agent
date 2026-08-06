@@ -1,4 +1,4 @@
-export type Provider = "anthropic" | "openai" | "gemini";
+export type Provider = "anthropic" | "openai" | "gemini" | "groq";
 export type Turn = { role: "user" | "assistant"; content: string };
 
 /** A file the user attached, already base64 encoded by the browser. */
@@ -9,29 +9,32 @@ const GEMINI_INLINE = /^(image\/(png|jpeg|jpg|webp|heic|heif)|application\/pdf|t
 
 /**
  * Which provider to use. An explicit LLM_PROVIDER wins; otherwise we infer from
- * whichever key is present, so setting only OPENAI_API_KEY just works.
+ * whichever key is present.
  */
 export function activeProvider(): Provider {
   const explicit = process.env.LLM_PROVIDER?.toLowerCase();
-  if (explicit === "gemini" || explicit === "openai" || explicit === "anthropic") return explicit;
-  // Gemini first: it is the intended provider, and this ordering stops a stale
-  // key from another service silently hijacking the app.
+  if (explicit === "gemini" || explicit === "openai" || explicit === "anthropic" || explicit === "groq") return explicit as Provider;
+  // Check for Groq first (free tier)
+  if (process.env.GROQ_API_KEY) return "groq";
   if (process.env.GEMINI_API_KEY) return "gemini";
   if (process.env.OPENAI_API_KEY) return "openai";
   if (process.env.ANTHROPIC_API_KEY) return "anthropic";
-  return "gemini";
+  return "groq"; // Default to Groq if none set
 }
 
 export function apiKeyFor(provider: Provider): string | undefined {
   if (provider === "gemini") return process.env.GEMINI_API_KEY;
   if (provider === "openai") return process.env.OPENAI_API_KEY;
-  return process.env.ANTHROPIC_API_KEY;
+  if (provider === "anthropic") return process.env.ANTHROPIC_API_KEY;
+  if (provider === "groq") return process.env.GROQ_API_KEY;
+  return undefined;
 }
 
 export function modelFor(provider: Provider): string {
   if (provider === "gemini") return process.env.GEMINI_MODEL || "gemini-3.5-flash";
   if (provider === "openai") return process.env.OPENAI_MODEL || "gpt-5.6-terra";
-  return process.env.CLAUDE_MODEL || "claude-opus-5";
+  if (provider === "anthropic") return process.env.CLAUDE_MODEL || "claude-opus-5";
+  return process.env.GROQ_MODEL || "mixtral-8x7b-32768";
 }
 
 export function missingKeyMessage(provider: Provider): string {
@@ -40,14 +43,14 @@ export function missingKeyMessage(provider: Provider): string {
       ? "GEMINI_API_KEY"
       : provider === "openai"
         ? "OPENAI_API_KEY"
-        : "ANTHROPIC_API_KEY";
+        : provider === "anthropic"
+          ? "ANTHROPIC_API_KEY"
+          : "GROQ_API_KEY";
   return `${name} is not set. Add it in Vercel → Settings → Environment Variables, then redeploy.`;
 }
 
 /**
- * The two APIs differ in four places: the URL, the auth header, where the system
- * prompt lives, and what the token-limit field is called. Everything else in the
- * app is provider-agnostic.
+ * Build upstream request for different LLM providers
  */
 export function buildUpstreamRequest(params: {
   provider: Provider;
@@ -64,20 +67,15 @@ export function buildUpstreamRequest(params: {
       process.env.GEMINI_BASE_URL ||
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent`;
     return {
-      // alt=sse is required, or Gemini streams a JSON array instead of server-sent events.
       url: `${base}?alt=sse`,
       headers: {
         "content-type": "application/json",
         "x-goog-api-key": apiKey,
       },
       body: JSON.stringify({
-        // Gemini keeps the system prompt in its own field, and calls the
-        // assistant role "model" rather than "assistant".
         systemInstruction: { parts: [{ text: system }] },
         contents: messages.map((m, i) => {
           const parts: any[] = [{ text: m.content }];
-          // Attachments belong to the newest user turn only. Replaying them on
-          // every request would multiply the token cost of a long conversation.
           if (i === messages.length - 1 && m.role === "user") {
             for (const a of attachments) {
               if (GEMINI_INLINE.test(a.mimeType)) {
@@ -89,8 +87,6 @@ export function buildUpstreamRequest(params: {
         }),
         generationConfig: {
           maxOutputTokens: 400,
-          // Flash reasons before answering by default, which costs a second or
-          // more of silence. Voice needs the first word fast.
           thinkingConfig: { thinkingBudget: 0 },
         },
       }),
@@ -106,11 +102,26 @@ export function buildUpstreamRequest(params: {
       },
       body: JSON.stringify({
         model,
-        // OpenAI carries the system prompt as the first message rather than a top-level field.
         messages: [{ role: "system", content: system }, ...messages],
-        // Newer GPT models reject max_tokens and require max_completion_tokens.
         max_completion_tokens: 400,
         stream: true,
+      }),
+    };
+  }
+
+  if (provider === "groq") {
+    return {
+      url: process.env.GROQ_BASE_URL || "https://api.groq.com/openai/v1/chat/completions",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: "system", content: system }, ...messages],
+        max_tokens: 400,
+        stream: true,
+        temperature: 0.7,
       }),
     };
   }
@@ -135,13 +146,12 @@ export function buildUpstreamRequest(params: {
 /** Pull the text out of one parsed SSE event, or null if this event carries none. */
 export function extractDelta(provider: Provider, event: any): string | null {
   if (provider === "gemini") {
-    // A chunk can carry several parts; join them so nothing is dropped.
     const parts = event?.candidates?.[0]?.content?.parts;
     if (!Array.isArray(parts)) return null;
     const text = parts.map((p: any) => (typeof p?.text === "string" ? p.text : "")).join("");
     return text.length ? text : null;
   }
-  if (provider === "openai") {
+  if (provider === "openai" || provider === "groq") {
     const piece = event?.choices?.[0]?.delta?.content;
     return typeof piece === "string" && piece.length ? piece : null;
   }
