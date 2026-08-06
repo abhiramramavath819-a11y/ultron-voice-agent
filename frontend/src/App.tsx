@@ -300,7 +300,7 @@ export default function UltronVoiceAgent() {
           {/* WAKE WORD */}
           <div className="mb-6">
             <div style={{ color: currentPersona.color }} className="text-xs mb-2">WAKE WORD</div>
-            <div style={{ backgroundColor: currentPersona.bgColor, color: currentPersona.color }} className="px-2 py-1 text-xs font-bold border" style={{ borderColor: currentPersona.color }}>
+            <div style={{ backgroundColor: currentPersona.bgColor, color: currentPersona.color, borderColor: currentPersona.color }} className="px-2 py-1 text-xs font-bold border">
               Always listening
             </div>
             <div style={{ color: '#666' }} className="text-xs mt-1">Say the name</div>
