@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Mic, MicOff, Volume2, Upload } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
+import { Mic, MicOff, Volume2 } from 'lucide-react';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -64,7 +63,6 @@ export default function UltronVoiceAgent() {
   const [persona, setPersona] = useState<Persona>('ultron');
   const [language, setLanguage] = useState<Language>('en-US');
   const [meanLatency, setMeanLatency] = useState('142ms');
-  const [sessions, setSessions] = useState('1');
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
@@ -208,7 +206,7 @@ export default function UltronVoiceAgent() {
             
             <div>
               <div style={{ color: '#666' }}>Sessions</div>
-              <div style={{ color: currentPersona.color }}>{sessions}</div>
+              <div style={{ color: currentPersona.color }}>1</div>
             </div>
             
             <div>
@@ -237,10 +235,8 @@ export default function UltronVoiceAgent() {
                 <div style={{ color: msg.role === 'user' ? '#4A90E2' : currentPersona.color }}>
                   {msg.role === 'user' ? 'OPERATOR' : msg.persona?.toUpperCase()}
                 </div>
-                <div style={{ color: '#ccc', marginTop: '4px' }} className="text-sm leading-relaxed">
-                  <ReactMarkdown className="prose prose-invert max-w-none">
-                    {msg.content}
-                  </ReactMarkdown>
+                <div style={{ color: '#ccc', marginTop: '4px' }} className="text-sm leading-relaxed whitespace-pre-wrap">
+                  {msg.content}
                 </div>
               </div>
             ))}
