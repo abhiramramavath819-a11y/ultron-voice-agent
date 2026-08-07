@@ -29,6 +29,18 @@ import sys
 try:
     from fastapi import FastAPI, Header, HTTPException
     from fastapi.middleware.cors import CORSMiddleware
+
+
+app = FastAPI()
+
+# Add this CORS configuration right after app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows requests from your Vercel website
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
     from pydantic import BaseModel
     import uvicorn
 except ImportError:
